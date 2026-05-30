@@ -1,0 +1,9 @@
+{
+  "name": "halttrace",
+  "version": "0.1.0",
+  "description": "Local backtrace dumps for halted Claude Code sessions.",
+  "author": {
+    "name": "HaltTrace"
+  },
+  "license": "MIT"
+}
