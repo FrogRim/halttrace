@@ -8,6 +8,60 @@ This is architectural inspiration only. HaltTrace does not depend on spdlog, doe
 
 HaltTrace is observational only. It does not approve, deny, retry, veto, emit host control JSON, or send network traffic by default.
 
+> Portfolio position: coding-agent observability, hook/plugin adapters, local diagnostic tooling.
+
+## Why This Problem
+
+Coding-agent sessions can stop at host hook, tool, permission, runtime, or plugin boundaries. When that stop is unexpected, the useful evidence is often spread across recent tool calls, hook payloads, stderr/stdout tails, and local state. A normal log stream is either too noisy to review quickly or too sensitive to share safely.
+
+HaltTrace frames the problem as a bounded local observability problem: keep enough recent context to explain an involuntary halt, but avoid becoming a policy engine, retry system, or networked telemetry product.
+
+## Method
+
+```mermaid
+flowchart LR
+    A[host hook/runtime event] --> B[adapter wrapper]
+    B --> C[normalized internal event]
+    C --> D[small dispatcher]
+    D --> E[bounded event store]
+    D --> F[trigger classifier]
+    F --> G[Markdown backtrace sink]
+```
+
+## Engineering Decisions
+
+| Decision | Alternatives Considered | Why | Tradeoff |
+| --- | --- | --- | --- |
+| Observer-only behavior | approve/deny/retry/veto host actions | Diagnostics should not change the agent's control flow or become a hidden safety gate | HaltTrace cannot automatically recover a halted session |
+| Local bounded storage | remote telemetry or full log capture | Keeps sensitive session context local and limits retention risk | Cross-machine aggregation is intentionally out of scope |
+| Host adapters share one core contract | separate Claude/Codex implementations | Proves the router/sink contract across structurally different hook surfaces | Adapter-specific edge cases still need hardening |
+| Markdown incident dumps | raw JSON-only logs | Humans can review the halt context quickly during debugging | Requires careful redaction/truncation policy |
+| Explicit trigger policy | dump on every command/test failure | Ordinary failures are part of development; dumps should be reserved for unexpected halt conditions | Some noisy-but-useful events remain context only |
+
+## AI-Assisted Engineering Record
+
+AI was used to pressure-test the boundary between observability and control. The key review prompt was not "how can this tool intervene?", but "where could this accidentally become an enforcement surface, leak too much context, or overclaim universal runtime support?"
+
+Several tempting claims were rejected: HaltTrace is not an MCP server, not a policy engine, not a mature universal agent-runtime framework, and not a complete Codex interception boundary. Those limits are part of the public README because the engineering value is in the contract discipline, not in overstating the tool.
+
+## Validation Evidence
+
+| Evidence | Meaning |
+| --- | --- |
+| `npm run build` | TypeScript compiles and plugin wrapper runtime is synced |
+| `npm run typecheck` | Type contracts are checked without emitting files |
+| `npm test` | Node's built-in test runner validates compiled tests |
+| Claude/Codex wrapper paths | Two host adapters use the same core/router/sink contract |
+| Trigger policy table | Expected dump vs non-dump behavior is documented for review |
+| Privacy/storage section | Local state, bounded retention, and sharing caveats are explicit |
+
+## Known Limits
+
+- The Codex path is experimental and does not intercept every tool path.
+- HaltTrace observes events; it does not approve, deny, retry, or recover sessions.
+- Redaction is defense-in-depth, not a guarantee, so generated dumps must be reviewed before sharing.
+- Networked sinks, MCP server behavior, and mature universal-host claims are outside the current MVP.
+
 ## Current Status
 
 HaltTrace is currently:
