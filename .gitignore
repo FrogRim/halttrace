@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 dist/
 coverage/
 .omx/
@@ -9,3 +9,5 @@ coverage/
 .env.*
 !.env.example
 .npm-cache/
+!plugins/claude-code/dist/
+!plugins/claude-code/dist/**

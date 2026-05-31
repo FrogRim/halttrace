@@ -140,6 +140,27 @@ test("Claude hook CLI reports write failures as observer diagnostics without blo
   }
 });
 
+test("Claude plugin wrapper runs packaged runtime and surfaces dump path", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-packaged-wrapper-"));
+  try {
+    const result = await runNodeScript(
+      "plugins/claude-code/scripts/halttrace.mjs",
+      JSON.stringify({
+        hook_event_name: "PermissionDenied",
+        session_id: "packaged-wrapper-session",
+        cwd: process.cwd(),
+        tool_name: "Write",
+        tool_input: { file_path: "src/x.ts" },
+      }),
+      { HALTTRACE_STATE_DIR: dir },
+    );
+    assert.equal(result.code, 0);
+    assert.match(result.stdout, /backtrace dump:/);
+    assert.doesNotMatch(result.stderr, /observer diagnostic/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 test("Claude plugin wrapper only forwards sanitized observer lines", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "aesr-wrapper-"));
   try {
