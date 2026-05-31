@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "halttrace",
+  "version": "0.1.0",
+  "description": "Local backtrace dumps for halted Claude Code sessions.",
+  "owner": {
+    "name": "HaltTrace"
+  },
+  "plugins": [
+    {
+      "name": "halttrace",
+      "description": "Observes Claude Code hook events and writes local backtrace dumps when progress involuntarily halts.",
+      "version": "0.1.0",
+      "author": {
+        "name": "HaltTrace"
+      },
+      "source": "./plugins/claude-code",
+      "category": "development",
+      "homepage": "https://github.com/FrogRim/halttrace"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-﻿# HaltTrace
+# HaltTrace
 
 HaltTrace is a local observability aid for coding-agent sessions. It watches Claude Code hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace when progress involuntarily halts.
 
@@ -38,6 +38,28 @@ npm run build
 
 The build compiles TypeScript and syncs the built CLI into the Claude Code plugin wrapper.
 
+## Install With Claude Code Plugin Manager
+
+From this checkout on your PC:
+
+```sh
+claude plugin marketplace add ./ --scope user
+claude plugin install halttrace@halttrace --scope user
+```
+
+After the GitHub repository is available, a fresh machine can register the public repo as a marketplace instead:
+
+```sh
+claude plugin marketplace add FrogRim/halttrace --scope user
+claude plugin install halttrace@halttrace --scope user
+```
+
+Verify the install:
+
+```sh
+claude plugin validate ./plugins/claude-code
+claude plugin details halttrace
+```
 ## Claude Code Plugin Setup
 
 The Claude Code plugin lives at:
