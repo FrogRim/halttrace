@@ -17,7 +17,7 @@ export { IncidentDeduper } from "./core/dedup.js";
 export { SinkRegistry } from "./core/sink.js";
 export type { EventSink } from "./core/sink.js";
 export { classifyTrigger, isConsumableFeedback, isUserIntended } from "./core/trigger.js";
-export { defaultStateRoot, projectHash, resolveStoragePaths } from "./core/storage.js";
+export { assertStateRootSafeForProject, defaultStateRoot, projectHash, resolveStoragePaths } from "./core/storage.js";
 export { sanitizeEventForStorage } from "./core/privacy.js";
 export type { PrivacyPolicyOptions } from "./core/privacy.js";
 export { redactAndTruncate, redactText, truncateTail } from "./core/redaction.js";

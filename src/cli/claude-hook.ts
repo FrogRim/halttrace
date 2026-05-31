@@ -1,8 +1,8 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 import { access } from "node:fs/promises";
 import { stdin, cwd as processCwd, env } from "node:process";
 import { parseJsonObject } from "../core/json.js";
-import { resolveStoragePaths } from "../core/storage.js";
+import { assertStateRootSafeForProject, resolveStoragePaths } from "../core/storage.js";
 import { FileEventStore } from "../core/event-store.js";
 import { IncidentDeduper } from "../core/dedup.js";
 import { AgentEventRouter } from "../core/router.js";
@@ -23,6 +23,7 @@ async function main(): Promise<void> {
       sessionId: hookInput.sessionId,
     };
     const paths = resolveStoragePaths(stateRoot === undefined ? storageOptions : { ...storageOptions, stateRoot });
+    await assertStateRootSafeForProject(hookInput.cwd, paths.stateRoot);
     const store = new FileEventStore({
       eventsPath: paths.eventsPath,
       maxEvents: readIntEnv("HALTTRACE_MAX_EVENTS", 80),

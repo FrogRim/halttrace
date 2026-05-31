@@ -1,10 +1,11 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink } from "node:fs/promises";
+import { platform, tmpdir } from "node:os";
 import path from "node:path";
 import {
   AgentEventRouter,
+  assertStateRootSafeForProject,
   BacktraceSink,
   FileEventStore,
   IncidentDeduper,
@@ -17,7 +18,7 @@ import {
   replayJsonlText,
   resolveStoragePaths,
 } from "../src/index.js";
-import type { AgentEvent, DumpMode } from "../src/index.js";
+import type { AgentEvent, DumpMode, EventSink } from "../src/index.js";
 
 test("trigger classifier only treats anomaly events as triggers", () => {
   assert.equal(classifyTrigger(event({ type: "host-blocked" })), "host-blocked");
@@ -99,16 +100,19 @@ test("router persists only redacted rich-local event content", async () => {
     const commandSecret = "AbCdEfGhIjKlMnOpQrStUvWxYz123456";
     const argsSecret = "sk_test_superSecretTokenValue123456789";
     const metadataSecret = "metadataSecretValue123456789ABCDEFG";
+    const pathSecret = "sk_path_superSecretTokenValue1234567890";
     const { paths } = await runRouterWithPaths(
       dir,
       "s-rich",
       event({
         type: "tool-exception",
+        cwd: path.join(tmpdir(), pathSecret, "project"),
+        filePaths: [path.join("src", pathSecret, "x.ts")],
         command: `curl -H "Authorization: Bearer ${commandSecret}" https://example.invalid`,
         args: `OPENAI_API_KEY=${argsSecret}`,
         stdout: `payload ${argsSecret}`,
         stderr: `Bearer ${commandSecret}`,
-        diffHunks: [{ file: "src/x.ts", patch: `+const token = "${argsSecret}";` }],
+        diffHunks: [{ file: path.join("src", pathSecret, "x.ts"), patch: `+const token = "${argsSecret}";` }],
         error: { message: `AUTH_TOKEN=${argsSecret}` },
         metadata: { note: `AUTH_TOKEN=${metadataSecret}` },
       }),
@@ -118,6 +122,7 @@ test("router persists only redacted rich-local event content", async () => {
     assert.doesNotMatch(rawEvents, new RegExp(commandSecret));
     assert.doesNotMatch(rawEvents, new RegExp(argsSecret));
     assert.doesNotMatch(rawEvents, new RegExp(metadataSecret));
+    assert.doesNotMatch(rawEvents, new RegExp(pathSecret));
     assert.match(rawEvents, /redacted/);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -170,6 +175,90 @@ test("storage resolver uses external state root shape and stable project hash", 
   assert.ok(paths.dumpPath.endsWith(".md"));
 });
 
+test("storage safety rejects repo-local, git-tracked, and symlink-resolved state roots", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-storage-"));
+  try {
+    const project = path.join(dir, "project");
+    await mkdir(path.join(project, ".git"), { recursive: true });
+
+    await assert.rejects(
+      () => assertStateRootSafeForProject(project, path.join(project, ".halttrace")),
+      /inside project directory/,
+    );
+
+    const externalGitState = path.join(dir, "external-state");
+    await mkdir(path.join(externalGitState, ".git"), { recursive: true });
+    await assert.rejects(
+      () => assertStateRootSafeForProject(project, externalGitState),
+      /git worktree/,
+    );
+
+    const symlinkState = path.join(dir, "symlink-state");
+    const created = await tryCreateDirectorySymlink(project, symlinkState);
+    if (created) {
+      await assert.rejects(
+        () => assertStateRootSafeForProject(project, symlinkState),
+        /inside project directory after symlink resolution|git worktree/,
+      );
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("concurrent routers write unique dumps and preserve both events", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-concurrent-"));
+  try {
+    const cwd = path.join(tmpdir(), "concurrent-project");
+    const firstPaths = resolveStoragePaths({ cwd, sessionId: "same-session", stateRoot: dir, now: new Date("2026-05-30T00:00:00Z") });
+    const secondPaths = resolveStoragePaths({ cwd, sessionId: "same-session", stateRoot: dir, now: new Date("2026-05-30T00:00:00Z") });
+    assert.notEqual(firstPaths.dumpPath, secondPaths.dumpPath);
+
+    const firstRouter = routerForPaths(firstPaths, "rich-local");
+    const secondRouter = routerForPaths(secondPaths, "rich-local");
+    const [first, second] = await Promise.all([
+      firstRouter.process(event({ id: "concurrent-one", type: "host-blocked", cwd, sessionId: "same-session" })),
+      secondRouter.process(event({ id: "concurrent-two", type: "tool-exception", cwd, sessionId: "same-session" })),
+    ]);
+
+    assert.equal(first.triggered, true);
+    assert.equal(second.triggered, true);
+    const files = await readdir(firstPaths.sessionDir);
+    assert.equal(files.filter((file) => file.endsWith(".md")).length, 2);
+    const stored = parseEventLines(await readFile(firstPaths.eventsPath, "utf8"));
+    assert.deepEqual(new Set(stored.map((item) => item.id)), new Set(["concurrent-one", "concurrent-two"]));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("router reports sink failures without throwing or changing host outcome", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-sink-failure-"));
+  try {
+    const paths = resolveStoragePaths({ cwd: process.cwd(), sessionId: "sink-failure", stateRoot: dir, now: new Date("2026-05-30T00:00:00Z") });
+    const failingSink: EventSink = {
+      id: "failing-sink",
+      handleIncident() {
+        throw new Error("disk full");
+      },
+    };
+    const router = new AgentEventRouter({
+      store: new FileEventStore({ eventsPath: paths.eventsPath, maxEvents: 20, maxBytes: 100_000 }),
+      deduper: new IncidentDeduper(paths.incidentStatePath, 0),
+      stateRoot: paths.stateRoot,
+      projectHash: paths.projectHash,
+      dumpMode: "rich-local",
+      sinks: [failingSink],
+      now: () => new Date("2026-05-30T00:00:00Z"),
+    });
+    const result = await router.process(event({ type: "tool-exception" }));
+    assert.equal(result.triggered, true);
+    assert.match(result.diagnostics[0]?.message ?? "", /Sink failed: failing-sink/);
+    assert.match(result.diagnostics[0]?.error ?? "", /disk full/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 test("Claude adapter maps context, blocked, and ordinary failures without control decisions", () => {
   const context = claudeHookToAgentEvent(
     parseClaudeHookInput({
@@ -288,6 +377,27 @@ test("JSONL replay harness processes fixtures through the same router", async ()
   }
 });
 
+function routerForPaths(paths: ReturnType<typeof resolveStoragePaths>, dumpMode: DumpMode): AgentEventRouter {
+  return new AgentEventRouter({
+    store: new FileEventStore({ eventsPath: paths.eventsPath, maxEvents: 20, maxBytes: 100_000 }),
+    deduper: new IncidentDeduper(paths.incidentStatePath, 0),
+    stateRoot: paths.stateRoot,
+    projectHash: paths.projectHash,
+    dumpMode,
+    sinks: [new BacktraceSink({ stateRoot: paths.stateRoot, dumpPath: paths.dumpPath, dumpMode })],
+    now: () => new Date("2026-05-30T00:00:00Z"),
+  });
+}
+
+async function tryCreateDirectorySymlink(target: string, link: string): Promise<boolean> {
+  try {
+    const type: "junction" | "dir" = platform() === "win32" ? "junction" : "dir";
+    await symlink(target, link, type);
+    return true;
+  } catch {
+    return false;
+  }
+}
 async function runRouter(stateRoot: string, sessionId: string, input: AgentEvent, dumpMode: DumpMode = "rich-local") {
   const { result } = await runRouterWithPaths(stateRoot, sessionId, input, dumpMode);
   return result;

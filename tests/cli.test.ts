@@ -1,7 +1,8 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -86,6 +87,54 @@ test("Claude hook CLI does not dump for user interrupt signals", async () => {
     );
     assert.equal(result.code, 0);
     assert.equal(result.stdout.trim(), "");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("Claude hook CLI refuses repo-local state roots without writing or blocking host", async () => {
+  const project = await mkdtemp(path.join(tmpdir(), "aesr-project-"));
+  try {
+    await mkdir(path.join(project, ".git"), { recursive: true });
+    const unsafeStateRoot = path.join(project, ".halttrace");
+    const result = await runCli(
+      {
+        hook_event_name: "PermissionDenied",
+        session_id: "cli-session",
+        cwd: project,
+        tool_name: "Write",
+        tool_input: { file_path: "src/x.ts" },
+      },
+      unsafeStateRoot,
+    );
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout.trim(), "");
+    assert.match(result.stderr, /observer diagnostic/);
+    assert.match(result.stderr, /inside project directory/);
+    assert.equal(existsSync(unsafeStateRoot), false);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test("Claude hook CLI reports write failures as observer diagnostics without blocking host", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-write-failure-"));
+  try {
+    const stateRootFile = path.join(dir, "state-root-file");
+    await writeFile(stateRootFile, "not a directory", "utf8");
+    const result = await runCli(
+      {
+        hook_event_name: "PermissionDenied",
+        session_id: "cli-session",
+        cwd: process.cwd(),
+        tool_name: "Write",
+        tool_input: { file_path: "src/x.ts" },
+      },
+      stateRootFile,
+    );
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout.trim(), "");
+    assert.match(result.stderr, /observer diagnostic/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

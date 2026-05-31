@@ -1,8 +1,24 @@
-﻿# Architecture
+# Architecture
 
 ## Goal
 
 HaltTrace provides local incident backtraces for agent sessions. Its job is to preserve recent context when a session is blocked or derailed, not to judge code or control the host.
+
+## spdlog-Inspired Dispatch Model
+
+HaltTrace borrows the shape of spdlog's dispatch architecture, but it is not a port of spdlog and has no spdlog dependency. The mapping is architectural only:
+
+| spdlog concept | HaltTrace concept |
+| --- | --- |
+| logger | host hook event emitter |
+| sink | independent observer sink |
+| formatter | dump renderer, currently Markdown |
+| registry | sink registration and router configuration |
+| level | trigger kind and event severity |
+| async logger / thread pool | non-blocking observer execution boundary for future slow sinks |
+| backtrace buffer | bounded local event history used by `BacktraceSink` |
+
+The important constraint is the side-effect-only sink contract. The router fans out normalized events to sinks, and sinks may write diagnostics, but they must not approve, deny, retry, veto, or otherwise feed decisions back into the host.
 
 ## Data Flow
 

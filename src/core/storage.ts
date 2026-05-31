@@ -1,4 +1,4 @@
-﻿import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, realpath, lstat, chmod } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { homedir, platform as osPlatform } from "node:os";
@@ -62,6 +62,27 @@ export async function ensurePrivateDirectory(dir: string): Promise<void> {
   await chmodBestEffort(dir, 0o700);
 }
 
+export async function assertStateRootSafeForProject(projectCwd: string | undefined, stateRoot: string): Promise<void> {
+  if (projectCwd === undefined || projectCwd.trim().length === 0) {
+    return;
+  }
+  const lexicalProject = path.resolve(projectCwd);
+  const lexicalStateRoot = path.resolve(stateRoot);
+  if (isInsideOrSame(lexicalProject, lexicalStateRoot)) {
+    throw new Error(`Refusing to write state inside project directory: ${stateRoot}`);
+  }
+
+  const resolvedProject = await resolveExistingOrParent(lexicalProject);
+  const resolvedStateRoot = await resolveExistingOrParent(lexicalStateRoot);
+  if (isInsideOrSame(resolvedProject, resolvedStateRoot)) {
+    throw new Error(`Refusing to write state inside project directory after symlink resolution: ${stateRoot}`);
+  }
+
+  if (hasGitMetadata(resolvedStateRoot)) {
+    throw new Error(`Refusing to write state inside git worktree: ${resolvedStateRoot}`);
+  }
+}
+
 export async function assertSafeWritePath(root: string, target: string): Promise<void> {
   const resolvedRoot = await resolveExistingOrParent(root);
   const resolvedTargetParent = await resolveExistingOrParent(path.dirname(target));
@@ -108,4 +129,13 @@ async function resolveExistingOrParent(input: string): Promise<string> {
     return resolved;
   }
   return resolveExistingOrParent(parent);
+}
+
+function hasGitMetadata(dir: string): boolean {
+  return existsSync(path.join(dir, ".git"));
+}
+
+function isInsideOrSame(root: string, target: string): boolean {
+  const relative = path.relative(path.resolve(root), path.resolve(target));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }

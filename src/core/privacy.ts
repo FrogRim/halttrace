@@ -9,6 +9,8 @@ export interface PrivacyPolicyOptions {
   diffMaxChars?: number;
 }
 
+const METADATA_MAX_CHARS = 2000;
+
 export function sanitizeEventForStorage(event: AgentEvent, options: PrivacyPolicyOptions): AgentEvent {
   const base = copyMetadataOnlyFields(event);
   if (options.dumpMode === "metadata-only") {
@@ -64,7 +66,7 @@ function copyMetadataOnlyFields(event: AgentEvent): AgentEvent {
     output.sequence = event.sequence;
   }
   if (event.cwd !== undefined) {
-    output.cwd = event.cwd;
+    output.cwd = sanitizeMetadataString(event.cwd, "path");
   }
   if (event.toolName !== undefined) {
     output.toolName = event.toolName;
@@ -73,7 +75,7 @@ function copyMetadataOnlyFields(event: AgentEvent): AgentEvent {
     output.exitCode = event.exitCode;
   }
   if (event.filePaths !== undefined) {
-    output.filePaths = [...event.filePaths];
+    output.filePaths = event.filePaths.map((file) => sanitizeMetadataString(file, "path"));
   }
   if (event.metadata !== undefined) {
     output.metadata = sanitizeMetadata(event.metadata);
@@ -91,7 +93,7 @@ function sanitizeMetadata(metadata: Record<string, JsonValue>): Record<string, J
 
 function sanitizeJsonValue(value: JsonValue): JsonValue {
   if (typeof value === "string") {
-    return redactAndTruncate(value, 2000, "metadata")?.text ?? "";
+    return sanitizeMetadataString(value, "metadata");
   }
   if (Array.isArray(value)) {
     return value.map((item) => sanitizeJsonValue(item));
@@ -127,7 +129,7 @@ function sanitizeDiffHunks(hunks: DiffHunk[] | undefined, maxChars: number): Dif
     return undefined;
   }
   return hunks.map((hunk) => {
-    const output: DiffHunk = { file: hunk.file };
+    const output: DiffHunk = { file: sanitizeMetadataString(hunk.file, "path") };
     if (hunk.hunkHeader !== undefined) {
       output.hunkHeader = hunk.hunkHeader;
     }
@@ -140,4 +142,8 @@ function sanitizeDiffHunks(hunks: DiffHunk[] | undefined, maxChars: number): Dif
     }
     return output;
   });
+}
+
+function sanitizeMetadataString(value: string, label: string): string {
+  return redactAndTruncate(value, METADATA_MAX_CHARS, label)?.text ?? "";
 }

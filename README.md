@@ -227,6 +227,7 @@ For HaltTrace, the useful pattern is: state scope first, show exact setup snippe
 - [Architecture](docs/architecture.md)
 - [Sink API](docs/sink-api.md)
 - [Behavioral Evaluation Log](docs/evaluation-log.md)
+- [Security Policy](SECURITY.md)
 - [Sample Incident Report](examples/sample-report.md)
 
 ## Roadmap

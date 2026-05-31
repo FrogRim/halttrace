@@ -17,6 +17,12 @@ Noise/spam concern: yes/no
 Notes:
 ```
 
+## Active Reach-For Protocol
+
+Do not treat install count, passive retention, badges, or staged demos as the Value MVP verdict. The adoption signal is active reach-for: during real halted/error sessions, a non-author tester opens the dump first without prompting, uses it before rerunning or scrolling, and can identify the cause fully or partially from the dump.
+
+Record the counterfactual for each incident: would the tester still have rerun the command, searched logs, or scrolled the transcript without the dump? If yes, record the missing context instead of counting the case as a clean success.
+
 ## Release Gate
 
 Value MVP can proceed only when:
