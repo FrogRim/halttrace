@@ -34,6 +34,15 @@ Host hook event
   -> local dump file + surfaced dump path
 ```
 
+## Universal MVP Boundary
+
+The Universal MVP means the same core/router/sink contract now handles two host families:
+
+- Claude Code through `adapter-claude-code` and `plugins/claude-code`
+- Codex through `adapter-codex` and `plugins/codex`
+
+This is a contract-validation milestone, not a mature universality claim. The adapters may map different host events into the same internal `AgentEvent` vocabulary, but host-specific command output rules, plugin metadata, trust review, and hook signal coverage stay outside core.
+
 ## Modules
 
 ### `core`
@@ -47,6 +56,20 @@ Core must not import host adapters or encode Claude/Codex event names directly.
 Owns Claude Code hook input parsing and event normalization.
 
 The adapter is observational only. It must not emit host control decisions or blocking exit statuses.
+
+### `adapter-codex`
+
+Owns Codex hook input parsing and event normalization.
+
+The Codex adapter maps lifecycle/tool hooks into the same `AgentEvent` contract while keeping Codex-specific output rules out of core. `Stop` is treated as turn context, not an anomaly. `PermissionRequest` is observed as context only; HaltTrace does not decide approval policy. `PostToolUse` triggers only for explicit `apply_patch` failures or explicit unhandled tool exceptions, not for ordinary non-zero Bash results.
+
+### `cli/claude-hook`
+
+Runs the Claude Code observer pipeline. It may surface a dump path on stdout because the Claude hook events HaltTrace uses accept plain observer output.
+
+### `cli/codex-hook`
+
+Runs the Codex observer pipeline. It keeps stdout empty and writes dump paths/diagnostics to stderr so Stop and shared-output hooks cannot accidentally receive invalid control output.
 
 ### `sink-backtrace`
 
@@ -89,6 +112,7 @@ Adapter wrappers must:
 - never use host-specific blocking exit codes
 - treat sink failures as router diagnostics
 - avoid turning dump-write failures into host failures
+- respect host-specific stdout/stderr rules
 
 ## Storage
 
@@ -106,4 +130,4 @@ Default mode is `rich-local`: diagnostically useful, bounded, local-only content
 
 Events are sanitized before they are appended to the durable `events.jsonl` ring buffer. In `metadata-only` mode, command text, args, stdout, stderr, diff hunks, and error details are omitted before persistence, not just hidden from the Markdown dump.
 
-No network output is produced by the Value MVP.
+No network output is produced by the Value/Universal MVP.

@@ -1,0 +1,20 @@
+{
+  "name": "halttrace",
+  "interface": {
+    "displayName": "HaltTrace"
+  },
+  "plugins": [
+    {
+      "name": "halttrace",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

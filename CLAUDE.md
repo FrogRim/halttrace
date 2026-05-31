@@ -3,9 +3,9 @@
 ## Project Overview
 
 - HaltTrace is a TypeScript/Node local observability aid for coding-agent sessions.
-- It observes Claude Code hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace dump when progress involuntarily halts.
+- It observes Claude Code and experimental Codex hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace dump when progress involuntarily halts.
 - The npm package name is `halttrace`.
-- The MVP scope is Claude Code first, `BacktraceSink` only, and local files only.
+- The MVP scope is Claude Code plus experimental Codex adapter support, `BacktraceSink` only, and local files only.
 - The architecture is inspired by spdlog's emitter/router/sink/backtrace model, but HaltTrace does not depend on spdlog or reimplement it.
 - Treat this file as Claude Code project memory: shared, concise instructions for agents working in this repository.
 
@@ -35,9 +35,11 @@ Run `npm test` before claiming behavior changes are complete. For documentation-
 - Do not turn the dispatcher or sinks into a gate, policy engine, retry loop, or host-control surface.
 - `src/core/` owns normalized event types, routing, event storage, trigger classification, dedup/cooldown, redaction/truncation helpers, privacy handling, and storage path resolution.
 - `src/adapters/claude-code.ts` owns Claude Code hook input parsing and normalization into `AgentEvent`.
+- `src/adapters/codex.ts` owns Codex hook input parsing and normalization into `AgentEvent`.
 - `src/sinks/backtrace.ts` owns Markdown incident rendering and local dump writing.
 - `src/replay/` owns JSONL replay helpers for fixture and contract testing.
-- `src/cli/claude-hook.ts` wires stdin hook input to the adapter, router, store, deduper, and sink.
+- `src/cli/claude-hook.ts` wires Claude stdin hook input to the adapter, router, store, deduper, and sink.
+- `src/cli/codex-hook.ts` wires Codex stdin hook input to the same core pipeline and keeps stdout empty.
 - Core code must not import host adapters or encode Claude/Codex event names directly.
 - Host-specific behavior belongs in adapters or plugin wrapper code, not in core.
 
@@ -45,8 +47,8 @@ Run `npm test` before claiming behavior changes are complete. For documentation-
 
 - HaltTrace is an observer, not an enforcement layer.
 - Do not add veto, approval, denial, retry, forced continuation, or host-control behavior.
-- Do not emit Claude Code control JSON such as `decision`, `permissionDecision`, `continue:false`, or `retry:true` from HaltTrace observer paths.
-- Do not use Claude Code blocking exit-code semantics for handled observer events; handled events should exit successfully.
+- Do not emit host control JSON such as `decision`, `permissionDecision`, `continue:false`, or `retry:true` from HaltTrace observer paths.
+- Do not use host blocking exit-code semantics for handled observer events; handled events should exit successfully. Codex observer output must keep stdout empty and use stderr for `[halttrace]` diagnostics.
 - Treat sink failures as diagnostics. Do not turn dump-write failures into host failures.
 - Keep default storage local and outside the repository unless an explicit feature changes that contract with tests.
 - Do not add network output by default.
@@ -76,8 +78,8 @@ Non-trigger examples:
 
 ## Non-Goals
 
-- Do not turn HaltTrace into an AI reviewer, policy engine, safety gate, merge gate, or universal runtime adapter without explicit scope approval.
-- Do not claim universal agent support until a second structurally different host adapter works through the same core contract without core changes.
+- Do not turn HaltTrace into an AI reviewer, policy engine, safety gate, merge gate, or broad runtime framework without explicit scope approval.
+- Do not claim mature universal agent support; the current Universal MVP only means Claude Code and experimental Codex adapters share the same core contract.
 - Do not expand `CLAUDE.md` into marketing copy or broad process guidance.
 
 ## Contribution Guidance For Agents
@@ -88,4 +90,4 @@ Non-trigger examples:
 - Prefer deletion or reuse of existing helpers over new abstractions.
 - Do not edit package metadata, plugin metadata, or generated build output unless the task explicitly requires it.
 - Do not commit local state directories, scenario output, dumps, or secrets.
-- If changing Claude Code hook handling, verify the observer contract explicitly: no blocking exit status and no control JSON.
+- If changing Claude Code or Codex hook handling, verify the observer contract explicitly: no blocking exit status, no control JSON, and Codex stdout remains empty.

@@ -188,6 +188,107 @@ test("Claude plugin wrapper only forwards sanitized observer lines", async () =>
   }
 });
 
+
+test("Codex hook CLI records context events without stdout or control JSON", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-codex-cli-"));
+  try {
+    const result = await runCodexCli(
+      {
+        hook_event_name: "PreToolUse",
+        session_id: "codex-cli-session",
+        turn_id: "turn-1",
+        cwd: process.cwd(),
+        tool_name: "Bash",
+        tool_input: { command: "npm test" },
+      },
+      dir,
+    );
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout.trim(), "");
+    assert.doesNotMatch(result.stderr, /"decision"/);
+    assert.doesNotMatch(result.stderr, /"permissionDecision"/);
+    assert.doesNotMatch(result.stderr, /"continue"/);
+    assert.doesNotMatch(result.stderr, /"retry"/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("Codex hook CLI dumps apply_patch failures to stderr only", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-codex-cli-"));
+  try {
+    const result = await runCodexCli(
+      {
+        hook_event_name: "PostToolUse",
+        session_id: "codex-cli-session",
+        cwd: process.cwd(),
+        tool_name: "apply_patch",
+        tool_input: { command: "*** Begin Patch\n*** Update File: src/x.ts" },
+        tool_response: { success: false, error: "Patch did not apply", file_path: "src/x.ts" },
+      },
+      dir,
+    );
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout.trim(), "");
+    assert.match(result.stderr, /backtrace dump:/);
+    assert.doesNotMatch(result.stderr, /"decision"/);
+    assert.doesNotMatch(result.stderr, /"permissionDecision"/);
+    assert.doesNotMatch(result.stderr, /"continue"/);
+    assert.doesNotMatch(result.stderr, /"retry"/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("Codex plugin wrapper runs packaged runtime with empty stdout", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-codex-wrapper-"));
+  try {
+    const result = await runNodeScript(
+      "plugins/codex/scripts/halttrace.mjs",
+      JSON.stringify({
+        hook_event_name: "PostToolUse",
+        session_id: "codex-packaged-wrapper-session",
+        cwd: process.cwd(),
+        tool_name: "apply_patch",
+        tool_input: { command: "*** Begin Patch\n*** Update File: src/x.ts" },
+        tool_response: { success: false, error: "Patch did not apply", file_path: "src/x.ts" },
+      }),
+      { PLUGIN_DATA: dir },
+    );
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout.trim(), "");
+    assert.match(result.stderr, /backtrace dump:/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("Codex plugin wrapper suppresses child stdout and forwards only observer stderr", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "aesr-codex-wrapper-"));
+  try {
+    const fakeEntry = path.join(dir, "fake-child.mjs");
+    await writeFile(
+      fakeEntry,
+      [
+        "console.log('raw stdout SECRET_TOKEN=abc123');",
+        "console.log('[halttrace] backtrace dump: C:/state/dump.md');",
+        "console.error('raw stderr SECRET_TOKEN=def456');",
+        "console.error('[halttrace] observer diagnostic: safe');",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await runNodeScript("plugins/codex/scripts/halttrace.mjs", "{}", {
+      HALTTRACE_ENTRY: fakeEntry,
+    });
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout.trim(), "");
+    assert.match(result.stderr, /observer diagnostic: safe/);
+    assert.doesNotMatch(result.stderr, /SECRET_TOKEN/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 interface CliResult {
   code: number | null;
   stdout: string;
@@ -219,6 +320,31 @@ function runCli(input: unknown, stateDir: string): Promise<CliResult> {
   });
 }
 
+
+function runCodexCli(input: unknown, stateDir: string): Promise<CliResult> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["dist/src/cli/codex-hook.js"], {
+      cwd: process.cwd(),
+      env: { ...process.env, HALTTRACE_STATE_DIR: stateDir },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      resolve({ code, stdout, stderr });
+    });
+    child.stdin.end(JSON.stringify(input));
+  });
+}
 function runNodeScript(scriptPath: string, input: string, extraEnv: NodeJS.ProcessEnv): Promise<CliResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [scriptPath], {

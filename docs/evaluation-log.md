@@ -23,14 +23,16 @@ Do not treat install count, passive retention, badges, or staged demos as the Va
 
 Record the counterfactual for each incident: would the tester still have rerun the command, searched logs, or scrolled the transcript without the dump? If yes, record the missing context instead of counting the case as a clean success.
 
-## Release Gate
+## Release And Adoption Gates
 
-Value MVP can proceed only when:
+Engineering validation can proceed when:
 
 - automated trigger/non-trigger/storage/redaction tests pass
-- at least one non-author tester demonstrates active reach-for behavior
+- fresh install or packaged-wrapper smoke checks pass for the supported host paths
 - no surprise secret exposure occurs in a sharing or commit context
 - dump output does not become noisy enough to ignore
+
+The adoption verdict remains separate. Do not treat install count, passive retention, badges, or staged demos as the Value MVP verdict. The adoption signal still requires at least one non-author tester demonstrating active reach-for behavior during a real halted/error session. For the current plan, that reach-for evidence is collected after public deployment rather than before the engineering Universal MVP lands.
 
 ## Fresh Install Checks
 
@@ -43,3 +45,15 @@ Value MVP can proceed only when:
 - Smoke test: invoked installed `scripts/halttrace.mjs` with a `PermissionDenied` event and `HALTTRACE_STATE_DIR` pointed at the isolated profile
 - Evidence: wrapper printed `[halttrace] backtrace dump:` and wrote exactly one Markdown dump
 - Verdict: pass
+### 2026-05-31 - Universal MVP Local Validation
+
+- Commit: pending
+- Environment: Windows PC, Node local runtime, Codex CLI `0.130.0`
+- Codex feature state observed locally: `hooks` stable true, `plugins` stable true, `plugin_hooks` under-development false
+- Validators: `claude plugin validate ./plugins/claude-code` passed; Codex plugin creator validator passed for `plugins/codex`
+- Automated checks: `npm run typecheck` passed; `npm test` passed with 25/25 tests
+- Codex smoke test: invoked `plugins/codex/scripts/halttrace.mjs` with `PLUGIN_DATA` and a Codex-style `PostToolUse` `apply_patch` failure payload
+- Codex smoke result: exit `0`, stdout empty, stderr contained `[halttrace] backtrace dump:`, and exactly one Markdown dump was written
+- Limitation: full Codex plugin activation through the local Codex CLI was not verified because the installed CLI exposes marketplace add/upgrade/remove but no plugin install/enable command in `codex plugin --help`; packaged wrapper and manifest validation are the current local evidence
+- Non-author reach-for: pending post-deployment real-incident evaluation
+- Verdict: engineering Universal MVP smoke pass; adoption verdict pending

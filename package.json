@@ -5,7 +5,9 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "halttrace": "./dist/src/cli/claude-hook.js"
+    "halttrace": "./dist/src/cli/claude-hook.js",
+    "halttrace-claude": "./dist/src/cli/claude-hook.js",
+    "halttrace-codex": "./dist/src/cli/codex-hook.js"
   },
   "files": [
     "dist/src/",
@@ -13,6 +15,7 @@
     "docs/",
     "examples/",
     "README.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {

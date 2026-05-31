@@ -2,10 +2,15 @@ import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 const source = resolve("dist/src");
-const target = resolve("plugins/claude-code/dist/src");
+const targets = [
+  resolve("plugins/claude-code/dist/src"),
+  resolve("plugins/codex/dist/src"),
+];
 
-await rm(resolve("plugins/claude-code/dist"), { recursive: true, force: true });
-await copyRuntimeJs(source, target);
+for (const target of targets) {
+  await rm(resolve(target, ".."), { recursive: true, force: true });
+  await copyRuntimeJs(source, target);
+}
 
 async function copyRuntimeJs(sourceDir, targetDir) {
   await mkdir(targetDir, { recursive: true });

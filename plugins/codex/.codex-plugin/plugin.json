@@ -1,0 +1,36 @@
+{
+  "name": "halttrace",
+  "version": "0.1.0",
+  "description": "Observer-only local backtraces for halted Codex sessions.",
+  "author": {
+    "name": "FrogRim",
+    "url": "https://github.com/FrogRim"
+  },
+  "homepage": "https://github.com/FrogRim/halttrace",
+  "repository": "https://github.com/FrogRim/halttrace",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "hooks",
+    "backtrace",
+    "observability",
+    "agent"
+  ],
+  "interface": {
+    "displayName": "HaltTrace",
+    "shortDescription": "Local backtraces for halted Codex sessions.",
+    "longDescription": "HaltTrace is an observer-only lifecycle hook plugin. It records bounded local event context and writes a local backtrace dump when an anomaly trigger is observed.",
+    "developerName": "FrogRim",
+    "category": "Productivity",
+    "capabilities": [
+      "hooks",
+      "local-observability"
+    ],
+    "defaultPrompt": [
+      "Use HaltTrace to preserve local backtraces for halted Codex sessions.",
+      "Show me the latest HaltTrace dump path for this project."
+    ],
+    "websiteURL": "https://github.com/FrogRim/halttrace",
+    "privacyPolicyURL": "https://github.com/FrogRim/halttrace/blob/main/SECURITY.md"
+  }
+}

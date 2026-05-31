@@ -2,12 +2,18 @@ export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 export type AgentEventType =
+  | "session-start"
+  | "user-prompt"
   | "tool-invocation"
+  | "permission-request"
   | "tool-result"
   | "host-blocked"
   | "tool-exception"
   | "edit-apply-failure"
   | "host-unrecoverable-error"
+  | "turn-stop"
+  | "subagent-start"
+  | "subagent-stop"
   | "session-end"
   | "unknown";
 

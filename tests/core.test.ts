@@ -14,6 +14,8 @@ import {
   parseEventLines,
   parseClaudeHookInput,
   claudeHookToAgentEvent,
+  parseCodexHookInput,
+  codexHookToAgentEvent,
   projectHash,
   replayJsonlText,
   resolveStoragePaths,
@@ -349,6 +351,78 @@ test("Claude adapter maps context, blocked, and ordinary failures without contro
   );
   assert.equal(toolException.type, "tool-exception");
   assert.equal(classifyTrigger(toolException), "tool-exception");
+});
+
+
+test("Codex adapter maps documented hook events without turning feedback into gates", () => {
+  const preTool = codexHookToAgentEvent(
+    parseCodexHookInput({
+      hook_event_name: "PreToolUse",
+      session_id: "codex-s",
+      turn_id: "turn-1",
+      cwd: "/tmp/work",
+      tool_name: "Bash",
+      tool_use_id: "tool-1",
+      tool_input: { command: "npm test" },
+      permission_mode: "default",
+    }),
+  );
+  assert.equal(preTool.host, "codex");
+  assert.equal(preTool.type, "tool-invocation");
+  assert.equal(preTool.metadata?.["turnId"], "turn-1");
+  assert.equal(classifyTrigger(preTool), undefined);
+
+  const ordinaryFailedBash = codexHookToAgentEvent(
+    parseCodexHookInput({
+      hook_event_name: "PostToolUse",
+      session_id: "codex-s",
+      cwd: "/tmp/work",
+      tool_name: "Bash",
+      tool_input: { command: "npm test" },
+      tool_response: { exit_code: 1, stderr: "red" },
+    }),
+  );
+  assert.equal(ordinaryFailedBash.type, "tool-result");
+  assert.equal(classifyTrigger(ordinaryFailedBash), undefined);
+
+  const permissionRequest = codexHookToAgentEvent(
+    parseCodexHookInput({
+      hook_event_name: "PermissionRequest",
+      session_id: "codex-s",
+      cwd: "/tmp/work",
+      tool_name: "Bash",
+      tool_input: { command: "git push", description: "needs network" },
+    }),
+  );
+  assert.equal(permissionRequest.type, "permission-request");
+  assert.equal(classifyTrigger(permissionRequest), undefined);
+
+  const stop = codexHookToAgentEvent(
+    parseCodexHookInput({
+      hook_event_name: "Stop",
+      session_id: "codex-s",
+      cwd: "/tmp/work",
+      stop_hook_active: false,
+      last_assistant_message: "done",
+    }),
+  );
+  assert.equal(stop.type, "turn-stop");
+  assert.equal(stop.metadata?.["lastAssistantMessagePresent"], true);
+  assert.equal(classifyTrigger(stop), undefined);
+
+  const patchFailure = codexHookToAgentEvent(
+    parseCodexHookInput({
+      hook_event_name: "PostToolUse",
+      session_id: "codex-s",
+      cwd: "/tmp/work",
+      tool_name: "apply_patch",
+      tool_input: { command: "*** Begin Patch\n*** Update File: src/x.ts" },
+      tool_response: { success: false, error: "Patch did not apply", file_path: "src/x.ts" },
+    }),
+  );
+  assert.equal(patchFailure.type, "edit-apply-failure");
+  assert.equal(classifyTrigger(patchFailure), "edit-apply-failure");
+  assert.deepEqual(patchFailure.filePaths, ["src/x.ts"]);
 });
 
 test("JSONL replay harness processes fixtures through the same router", async () => {

@@ -11,3 +11,5 @@ coverage/
 .npm-cache/
 !plugins/claude-code/dist/
 !plugins/claude-code/dist/**
+!plugins/codex/dist/
+!plugins/codex/dist/**

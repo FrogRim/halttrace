@@ -24,5 +24,7 @@ export { redactAndTruncate, redactText, truncateTail } from "./core/redaction.js
 export { BacktraceSink, renderIncidentMarkdown } from "./sinks/backtrace.js";
 export { claudeHookToAgentEvent, parseClaudeHookInput } from "./adapters/claude-code.js";
 export type { ClaudeHookInput } from "./adapters/claude-code.js";
+export { codexHookToAgentEvent, parseCodexHookInput } from "./adapters/codex.js";
+export type { CodexHookInput } from "./adapters/codex.js";
 export { replayJsonlFile, replayJsonlText } from "./replay/jsonl.js";
 export type { ReplayResult } from "./replay/jsonl.js";
