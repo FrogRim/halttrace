@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 Guidance for Codex and other coding agents working in HaltTrace.
 
@@ -15,6 +15,7 @@ Guidance for Codex and other coding agents working in HaltTrace.
 - It observes host hook/runtime events, keeps a bounded local event history, and writes a local backtrace dump when progress involuntarily halts.
 - The package name is `halttrace`; the CLI entry is built to `dist/src/cli/claude-hook.js`.
 - The current MVP is Claude Code first, with a `BacktraceSink` and local files only.
+- The core architecture is inspired by spdlog's emitter/router/sink/backtrace dispatch model, but HaltTrace is not an spdlog port and has no spdlog dependency.
 
 ## Commands
 
@@ -30,6 +31,7 @@ Guidance for Codex and other coding agents working in HaltTrace.
 - Do not introduce `any`, implicit `any`, unchecked casts, or broad type escapes.
 - Prefer explicit, narrow domain types in `src/core/types.ts` and reuse existing helpers before adding new abstractions.
 - Keep core host-neutral. Core modules must not import host adapters or encode Claude/Codex event names directly.
+- Preserve the spdlog-inspired dispatch boundary: host-specific code belongs in adapters, the core router fans out normalized events, and sinks stay independent side-effect handlers.
 - Keep source comments sparse and useful; explain non-obvious policy or safety constraints, not mechanics.
 
 ## Testing Expectations
@@ -43,6 +45,7 @@ Guidance for Codex and other coding agents working in HaltTrace.
 ## Safety Constraints
 
 - HaltTrace must remain local-only and observer-only unless a future explicit policy layer is designed separately.
+- Do not use the spdlog-inspired dispatcher as an enforcement gate; veto, retry, approval, and policy decisions belong outside the observer sink router.
 - Do not add network output, telemetry, remote upload, or background service behavior by default.
 - Do not emit host control JSON such as `decision`, `permissionDecision`, `continue:false`, or `retry:true`.
 - Do not use host blocking exit-code semantics for handled observer events.

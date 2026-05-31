@@ -1,4 +1,4 @@
-﻿# HaltTrace Agent Guide
+# HaltTrace Agent Guide
 
 ## Project Overview
 
@@ -6,6 +6,7 @@
 - It observes Claude Code hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace dump when progress involuntarily halts.
 - The npm package name is `halttrace`.
 - The MVP scope is Claude Code first, `BacktraceSink` only, and local files only.
+- The architecture is inspired by spdlog's emitter/router/sink/backtrace model, but HaltTrace does not depend on spdlog or reimplement it.
 - Treat this file as Claude Code project memory: shared, concise instructions for agents working in this repository.
 
 ## Commands
@@ -30,6 +31,8 @@ Run `npm test` before claiming behavior changes are complete. For documentation-
 
 ## Architecture Boundaries
 
+- Preserve the spdlog-inspired dispatch contract: host adapters normalize hook events into `AgentEvent`, core routes events, sinks perform independent side effects, and `BacktraceSink` owns bounded backtrace dump behavior.
+- Do not turn the dispatcher or sinks into a gate, policy engine, retry loop, or host-control surface.
 - `src/core/` owns normalized event types, routing, event storage, trigger classification, dedup/cooldown, redaction/truncation helpers, privacy handling, and storage path resolution.
 - `src/adapters/claude-code.ts` owns Claude Code hook input parsing and normalization into `AgentEvent`.
 - `src/sinks/backtrace.ts` owns Markdown incident rendering and local dump writing.

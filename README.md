@@ -2,6 +2,10 @@
 
 HaltTrace is a local observability aid for coding-agent sessions. It watches Claude Code hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace when progress involuntarily halts.
 
+HaltTrace uses an spdlog-inspired dispatch architecture: host hook events are normalized into internal events, routed through a small dispatcher, and handled by independent sinks. The first sink is `BacktraceSink`, which keeps a bounded local event buffer and writes a diagnostic dump when the host reports an involuntary halt.
+
+This is architectural inspiration only. HaltTrace does not depend on spdlog, does not reimplement spdlog, and does not use the router as an enforcement gate.
+
 HaltTrace is observational only. It does not approve, deny, retry, veto, emit Claude Code control JSON, or send network traffic by default.
 
 ## Current Status
@@ -10,7 +14,7 @@ HaltTrace is currently:
 
 - a TypeScript/Node package named `halttrace`
 - a Claude Code hook/plugin wrapper under `plugins/claude-code`
-- a local event router, bounded event store, trigger classifier, and Markdown backtrace sink
+- an spdlog-inspired local event router, bounded event store, trigger classifier, and Markdown backtrace sink
 
 HaltTrace is not currently:
 
