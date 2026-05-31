@@ -47,11 +47,11 @@ The adoption verdict remains separate. Do not treat install count, passive reten
 - Verdict: pass
 ### 2026-05-31 - Universal MVP Local Validation
 
-- Commit: pending
+- Commit: `ec9f892`
 - Environment: Windows PC, Node local runtime, Codex CLI `0.130.0`
 - Codex feature state observed locally: `hooks` stable true, `plugins` stable true, `plugin_hooks` under-development false
 - Validators: `claude plugin validate ./plugins/claude-code` passed; Codex plugin creator validator passed for `plugins/codex`
-- Automated checks: `npm run typecheck` passed; `npm test` passed with 25/25 tests
+- Automated checks: `npm run typecheck` passed; `npm test` passed with 25/25 tests; GitHub Actions CI run `26704431392` passed on Node 20.x and Node 22.x
 - Codex smoke test: invoked `plugins/codex/scripts/halttrace.mjs` with `PLUGIN_DATA` and a Codex-style `PostToolUse` `apply_patch` failure payload
 - Codex smoke result: exit `0`, stdout empty, stderr contained `[halttrace] backtrace dump:`, and exactly one Markdown dump was written
 - Limitation: full Codex plugin activation through the local Codex CLI was not verified because the installed CLI exposes marketplace add/upgrade/remove but no plugin install/enable command in `codex plugin --help`; packaged wrapper and manifest validation are the current local evidence
