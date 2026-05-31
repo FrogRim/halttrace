@@ -6,6 +6,7 @@
 - It observes Claude Code and experimental Codex hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace dump when progress involuntarily halts.
 - The npm package name is `halttrace`.
 - The MVP scope is Claude Code plus experimental Codex adapter support, `BacktraceSink` only, and local files only.
+- Treat Codex support as conservative: ordinary Bash results are context-only, full plugin hook activation is environment-sensitive, and Codex dumps require an anomaly-bearing `apply_patch`, MCP, or explicit tool-exception event.
 - The architecture is inspired by spdlog's emitter/router/sink/backtrace model, but HaltTrace does not depend on spdlog or reimplement it.
 - Treat this file as Claude Code project memory: shared, concise instructions for agents working in this repository.
 
@@ -79,7 +80,8 @@ Non-trigger examples:
 ## Non-Goals
 
 - Do not turn HaltTrace into an AI reviewer, policy engine, safety gate, merge gate, or broad runtime framework without explicit scope approval.
-- Do not claim mature universal agent support; the current Universal MVP only means Claude Code and experimental Codex adapters share the same core contract.
+- Do not claim mature universal agent support; the current Universal MVP only means Claude Code and experimental Codex adapters share the same revised core contract.
+- Do not claim Codex trigger parity with Claude Code. Document whether a Codex change is context-only or can actually emit a dump.
 - Do not expand `CLAUDE.md` into marketing copy or broad process guidance.
 
 ## Contribution Guidance For Agents

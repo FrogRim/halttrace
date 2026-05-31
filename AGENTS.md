@@ -15,6 +15,7 @@ Guidance for Codex and other coding agents working in HaltTrace.
 - It observes host hook/runtime events, keeps a bounded local event history, and writes a local backtrace dump when progress involuntarily halts.
 - The package name is `halttrace`; host CLI entries build to `dist/src/cli/claude-hook.js` and `dist/src/cli/codex-hook.js`.
 - The current MVP supports Claude Code plus an experimental Codex adapter, with `BacktraceSink` and local files only.
+- Codex support is conservative and environment-sensitive: ordinary Bash events are context-only, full hook activation must be verified per Codex build, and dumps require an anomaly-bearing `apply_patch`, MCP, or explicit tool-exception event.
 - The core architecture is inspired by spdlog's emitter/router/sink/backtrace dispatch model, but HaltTrace is not an spdlog port and has no spdlog dependency.
 
 ## Commands
@@ -56,5 +57,6 @@ Guidance for Codex and other coding agents working in HaltTrace.
 
 - Update docs when behavior, commands, public contracts, plugin layout, or safety guarantees change.
 - Keep documentation concise and factual; describe the current Universal MVP as Claude Code plus experimental Codex contract validation, not mature universal host support.
+- Do not imply Codex trigger parity with Claude Code; call out context-only Codex flows and environment-specific hook activation limits.
 - In PR summaries, call out behavior changes, safety/privacy impact, and verification commands run.
 - If a verification command cannot run, state why and list the next-best check used.

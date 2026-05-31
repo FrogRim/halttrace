@@ -43,6 +43,8 @@ The Universal MVP means the same core/router/sink contract now handles two host 
 
 This is a contract-validation milestone, not a mature universality claim. The adapters may map different host events into the same internal `AgentEvent` vocabulary, but host-specific command output rules, plugin metadata, trust review, and hook signal coverage stay outside core.
 
+The Codex adapter work did widen `src/core/types.ts` once with host-neutral lifecycle/context event kinds such as `session-start`, `user-prompt`, `permission-request`, `turn-stop`, and subagent lifecycle events. That means this milestone is not a pure "second adapter with zero core edits" proof. It is the point where the cross-host event contract was corrected and then pinned with tests. Future adapters should not add host-specific event names to core.
+
 ## Modules
 
 ### `core`
@@ -61,7 +63,7 @@ The adapter is observational only. It must not emit host control decisions or bl
 
 Owns Codex hook input parsing and event normalization.
 
-The Codex adapter maps lifecycle/tool hooks into the same `AgentEvent` contract while keeping Codex-specific output rules out of core. `Stop` is treated as turn context, not an anomaly. `PermissionRequest` is observed as context only; HaltTrace does not decide approval policy. `PostToolUse` triggers only for explicit `apply_patch` failures or explicit unhandled tool exceptions, not for ordinary non-zero Bash results.
+The Codex adapter maps lifecycle/tool hooks into the same `AgentEvent` contract while keeping Codex-specific output rules out of core. `Stop` is treated as turn context, not an anomaly. `PermissionRequest` is observed as context only; HaltTrace does not decide approval policy. `PostToolUse` can trigger only for explicit `apply_patch` failures or explicit unhandled tool exceptions, not for ordinary non-zero Bash results. If a Codex build/session emits only lifecycle, permission, stop, and ordinary Bash tool results, the Codex path is context-only and no backtrace dump should be expected.
 
 ### `cli/claude-hook`
 

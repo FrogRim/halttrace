@@ -57,3 +57,13 @@ The adoption verdict remains separate. Do not treat install count, passive reten
 - Limitation: full Codex plugin activation through the local Codex CLI was not verified because the installed CLI exposes marketplace add/upgrade/remove but no plugin install/enable command in `codex plugin --help`; packaged wrapper and manifest validation are the current local evidence
 - Non-author reach-for: pending post-deployment real-incident evaluation
 - Verdict: engineering Universal MVP smoke pass; adoption verdict pending
+
+### 2026-05-31 - RedTeam Codex Scope Follow-up
+
+- Trigger: RedTeam review challenged Codex trigger coverage, README wording, Codex contract tests, Windows verification, and the "core unchanged" claim.
+- Official-doc check: current OpenAI Codex hook docs list matcher/canonical support for `Bash`, `apply_patch` with `Edit`/`Write` aliases, and MCP tool names; the reviewed "Bash-only" claim does not match the current docs. The practical limitation remains that Codex is not a complete interception boundary and ordinary Bash results are context-only for HaltTrace.
+- Documentation correction: README, architecture docs, `CLAUDE.md`, and `AGENTS.md` now state that Codex dumps require an anomaly-bearing `apply_patch`, MCP, or explicit tool-exception event; lifecycle, permission, stop, and ordinary Bash events only build context.
+- Windows clarification: docs now distinguish Windows state-directory support from full Codex plugin hook activation, which was not verified on this PC beyond wrapper/manifest/packaged smoke checks.
+- Core-contract clarification: `ec9f892` did widen `src/core/types.ts` with host-neutral lifecycle/context event kinds, so Universal MVP is documented as a revised contract pinned by tests, not a pure zero-core-edit adapter proof.
+- Added tests: `tests/codex-contract.test.ts` explicitly covers context-only Codex events, ordinary Bash non-trigger behavior, `apply_patch` failure triggers, and non-Bash/MCP exception triggers.
+- Verification: `npm run typecheck` passed; `npm test` passed with 27/27 tests.

@@ -79,7 +79,7 @@ HaltTrace is not currently:
 - a policy engine or safety gate
 - a mature universal agent-runtime framework
 
-The Codex path is intentionally labeled experimental. Current Codex hooks provide useful lifecycle and tool-observation events, but the available signal surface differs from Claude Code and not every Codex tool path is intercepted.
+The Codex path is intentionally labeled experimental. Current OpenAI Codex hook docs list support for `Bash`, `apply_patch` (with `Edit`/`Write` matcher aliases), and MCP tool names, but Codex is not a complete interception boundary. If a local Codex build or session only emits lifecycle, permission, stop, and ordinary Bash events, HaltTrace records context only and will not produce a backtrace dump until Codex emits an anomaly-bearing `apply_patch`, MCP, or explicit tool-exception event.
 
 ## Requirements
 
@@ -87,6 +87,8 @@ The Codex path is intentionally labeled experimental. Current Codex hooks provid
 - npm
 - Claude Code, when using the Claude Code plugin wrapper
 - Codex CLI/App with hooks/plugins support, when using the Codex wrapper
+
+Codex support is build-sensitive. Current OpenAI docs include Windows-specific hook configuration, but this project has only smoke-tested the Codex wrapper and manifest on this Windows PC; full plugin hook activation still needs verification on the Codex build/platform you intend to use.
 
 ## Install From Source
 
@@ -173,6 +175,8 @@ The repository also includes a local Codex marketplace descriptor:
 
 Codex plugin distribution and install surfaces are still moving. If your Codex build supports marketplace-backed plugin enablement, add this repo as a marketplace and enable `halttrace`. If it only supports direct hook files, wire the same wrapper command from `plugins/codex/hooks/hooks.json` into your user or project Codex hooks config.
 
+Local Windows validation is limited to the Node wrapper, manifest, marketplace metadata, and packaged smoke flow because the installed Codex CLI exposed marketplace management commands but no complete plugin enable/install flow for hook activation. Treat full Codex plugin activation as an environment-specific verification step.
+
 The Codex hook command is:
 
 ```sh
@@ -204,11 +208,13 @@ The Codex wrapper deliberately keeps stdout empty. This avoids accidentally retu
 | `UserPromptSubmit` | Records prompt-turn context | Context only |
 | `PreToolUse` | Records supported tool input | Context only |
 | `PermissionRequest` | Records approval-request context | Context only; HaltTrace does not decide |
-| `PostToolUse` | Records supported tool output | Triggers only for explicit `apply_patch` failures or explicit unhandled tool exceptions; ordinary command failures remain context |
+| `PostToolUse` | Records supported tool output | Can trigger only when Codex emits an explicit `apply_patch` failure or explicit unhandled tool exception; ordinary command failures remain context |
 | `Stop` | Records turn-stop context | Context only |
 | `SubagentStart` / `SubagentStop` | Records subagent lifecycle context | Context only |
 
-Codex currently supports hook matchers for events such as `PreToolUse`, `PermissionRequest`, and `PostToolUse`, including `Bash`, `apply_patch`, and MCP tool names. That support is not a complete interception boundary, so HaltTrace treats Codex as an observer surface, not as an enforcement surface.
+As of the current OpenAI Codex hook docs, `PreToolUse`, `PermissionRequest`, and `PostToolUse` matchers include `Bash`, `apply_patch` (also matched by `Edit` or `Write`), and MCP tool names. That support is still not a complete interception boundary, and HaltTrace treats Codex as an observer surface, not an enforcement surface.
+
+The practical trigger reality is conservative: Codex sessions that only surface lifecycle events, `PermissionRequest`, `Stop`, and ordinary `Bash` `PostToolUse` results will build a useful event buffer but will not emit a backtrace dump. On Codex, dump generation currently depends on Codex emitting an anomaly-bearing `apply_patch`, MCP, or explicit tool-exception event into `PostToolUse`.
 
 ## Trigger Policy
 
@@ -264,6 +270,8 @@ By default, HaltTrace stores data outside the repository:
 | Windows | `%LOCALAPPDATA%\halttrace` |
 
 When Claude Code provides `CLAUDE_PLUGIN_DATA`, the Claude plugin wrapper prefers that location unless `HALTTRACE_STATE_DIR` is set. When Codex provides `PLUGIN_DATA`, the Codex plugin wrapper prefers that location unless `HALTTRACE_STATE_DIR` is set.
+
+The Windows row is a storage-path default, not a claim that every Codex hook/plugin activation flow has been fully verified on Windows.
 
 Storage is sharded by project hash and session ID:
 
