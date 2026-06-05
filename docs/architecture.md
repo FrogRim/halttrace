@@ -34,6 +34,17 @@ Host hook event
   -> local dump file + surfaced dump path
 ```
 
+The dump consumption workflow is intentionally downstream of this observer path:
+
+```text
+Local Markdown dump
+  -> dump parser
+  -> deterministic explanation
+  -> handoff prompt for a resumed or different agent
+```
+
+This downstream workflow reads files only. It does not call a provider, mutate host state, or feed decisions back into the hook router.
+
 ## Universal MVP Boundary
 
 The Universal MVP means the same core/router/sink contract now handles two host families:
@@ -76,6 +87,10 @@ Runs the Codex observer pipeline. It keeps stdout empty and writes dump paths/di
 ### `sink-backtrace`
 
 Owns Markdown incident formatting, local dump writing, and surfacing the dump path through non-control output.
+
+### `dump-workflow`
+
+Owns deterministic local dump discovery, Markdown parsing, explanation rendering, and handoff rendering for `halttrace latest`, `halttrace explain`, and `halttrace handoff`.
 
 ### `replay`
 

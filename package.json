@@ -1,11 +1,11 @@
 {
   "name": "halttrace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local backtraces for halted coding-agent sessions.",
   "type": "module",
   "license": "MIT",
   "bin": {
-    "halttrace": "./dist/src/cli/claude-hook.js",
+    "halttrace": "./dist/src/cli/main.js",
     "halttrace-claude": "./dist/src/cli/claude-hook.js",
     "halttrace-codex": "./dist/src/cli/codex-hook.js"
   },
@@ -22,6 +22,7 @@
     "build": "tsc -p tsconfig.json && node scripts/sync-claude-plugin.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && node scripts/run-tests.mjs",
+    "prepare": "npm run build",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "engines": {

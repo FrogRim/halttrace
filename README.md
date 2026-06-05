@@ -1,6 +1,6 @@
 # HaltTrace
 
-HaltTrace is a local observability aid for coding-agent sessions. It watches host hook/runtime events, keeps a bounded local event history, and writes a local Markdown backtrace when progress involuntarily halts.
+HaltTrace is local failure automation for AI coding agents. It watches host hook/runtime events, keeps a bounded local event history, writes a local Markdown backtrace when progress involuntarily halts, and can turn that dump into deterministic triage or a handoff prompt.
 
 HaltTrace uses an spdlog-inspired dispatch architecture: host hook events are normalized into internal events, routed through a small dispatcher, and handled by independent sinks. The first sink is `BacktraceSink`, which keeps a bounded local event buffer and writes a diagnostic dump when the host reports an anomaly.
 
@@ -37,6 +37,7 @@ flowchart LR
 | Host adapters share one core contract | separate Claude/Codex implementations | Proves the router/sink contract across structurally different hook surfaces | Adapter-specific edge cases still need hardening |
 | Markdown incident dumps | raw JSON-only logs | Humans can review the halt context quickly during debugging | Requires careful redaction/truncation policy |
 | Explicit trigger policy | dump on every command/test failure | Ordinary failures are part of development; dumps should be reserved for unexpected halt conditions | Some noisy-but-useful events remain context only |
+| Deterministic dump workflow | required LLM/provider integration | `latest`, `explain`, and `handoff` work locally with no network or API key | Triage is useful but intentionally not a full AI repair agent |
 
 ## AI-Assisted Engineering Record
 
@@ -55,6 +56,7 @@ Several tempting claims were rejected: HaltTrace is not an MCP server, not a pol
 | Claude/Codex wrapper paths | Two host adapters use the same core/router/sink contract |
 | Trigger policy table | Expected dump vs non-dump behavior is documented for review |
 | Privacy/storage section | Local state, bounded retention, and sharing caveats are explicit |
+| `halttrace latest/explain/handoff` | Captured dumps can be consumed as local failure automation |
 
 ## Known Limits
 
@@ -71,6 +73,8 @@ HaltTrace is currently:
 - a stable Claude Code hook/plugin wrapper under `plugins/claude-code`
 - an experimental Codex hook/plugin wrapper under `plugins/codex`
 - an spdlog-inspired local event router, bounded event store, trigger classifier, and Markdown backtrace sink
+- a deterministic dump-reading CLI workflow: `latest`, `explain`, and `handoff`
+- an agent-facing `halttrace-dump-analysis` skill packaged with the plugin wrappers
 - a Universal MVP in the narrow contract sense: two structurally different host adapters now use the same core/router/sink contract
 
 HaltTrace is not currently:
@@ -106,6 +110,24 @@ The build compiles TypeScript and syncs the built CLI runtime into both plugin w
 plugins/claude-code/dist/src/
 plugins/codex/dist/src/
 ```
+
+## Failure Automation CLI
+
+The observer plugin creates dumps. The CLI workflow consumes those dumps:
+
+```sh
+halttrace latest
+halttrace explain
+halttrace handoff
+```
+
+- `halttrace latest` prints the newest local dump path.
+- `halttrace explain [dump.md]` prints deterministic local triage: trigger, host, session, files, likely cause, evidence previews, and next checks.
+- `halttrace handoff [dump.md]` prints a prompt another agent can use to continue from the dump.
+
+Use `--state-root <dir>` when reading from a custom state root, `--cwd <path>` to filter to a project hash, `--session <id>` to filter to one session, and `--json` for machine-readable output.
+
+These commands only read local dump files. They do not repair code, approve permissions, retry failed actions, call an AI provider, or send network traffic.
 
 ## Install With Claude Code Plugin Manager
 
@@ -333,6 +355,7 @@ Useful validation commands:
 ```sh
 claude plugin validate ./plugins/claude-code
 node plugins/codex/scripts/halttrace.mjs < codex-hook-payload.json
+halttrace explain examples/sample-report.md
 ```
 
 ## Documentation Pattern
@@ -353,10 +376,12 @@ For HaltTrace, the useful pattern is: state scope first, show exact setup snippe
 ## More Docs
 
 - [Architecture](docs/architecture.md)
+- [Failure Automation Workflow](docs/failure-automation.md)
 - [Sink API](docs/sink-api.md)
 - [Behavioral Evaluation Log](docs/evaluation-log.md)
 - [Security Policy](SECURITY.md)
 - [Sample Incident Report](examples/sample-report.md)
+- [Sample Handoff Prompt](examples/sample-handoff.md)
 
 ## Roadmap
 
@@ -365,6 +390,7 @@ Near-term:
 - harden Claude Code and Codex plugin packaging against fresh-install edge cases
 - expand real-incident evaluation with non-author testers
 - improve backtrace usefulness without increasing sensitive-content risk
+- make dump handoff workflows easier to invoke from host-specific agent skill surfaces
 
 Later:
 

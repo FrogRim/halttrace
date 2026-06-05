@@ -22,6 +22,14 @@ export { sanitizeEventForStorage } from "./core/privacy.js";
 export type { PrivacyPolicyOptions } from "./core/privacy.js";
 export { redactAndTruncate, redactText, truncateTail } from "./core/redaction.js";
 export { BacktraceSink, renderIncidentMarkdown } from "./sinks/backtrace.js";
+export {
+  findLatestDump,
+  parseDumpMarkdown,
+  readDumpSummary,
+  renderExplanation,
+  renderHandoff,
+} from "./core/dump-workflow.js";
+export type { DumpFile, DumpSearchOptions, DumpSummary, EvidenceBlock } from "./core/dump-workflow.js";
 export { claudeHookToAgentEvent, parseClaudeHookInput } from "./adapters/claude-code.js";
 export type { ClaudeHookInput } from "./adapters/claude-code.js";
 export { codexHookToAgentEvent, parseCodexHookInput } from "./adapters/codex.js";

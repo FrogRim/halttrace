@@ -67,3 +67,16 @@ The adoption verdict remains separate. Do not treat install count, passive reten
 - Core-contract clarification: `ec9f892` did widen `src/core/types.ts` with host-neutral lifecycle/context event kinds, so Universal MVP is documented as a revised contract pinned by tests, not a pure zero-core-edit adapter proof.
 - Added tests: `tests/codex-contract.test.ts` explicitly covers context-only Codex events, ordinary Bash non-trigger behavior, `apply_patch` failure triggers, and non-Bash/MCP exception triggers.
 - Verification: `npm run typecheck` passed; `npm test` passed with 27/27 tests.
+
+### 2026-06-05 - Dump Workflow Validation
+
+- Trigger: productized the next layer as a local dump-reading workflow instead of changing the observer hook plugin.
+- Scope: added `halttrace latest`, `halttrace explain`, and `halttrace handoff`; added Claude Code and Codex agent-facing dump-analysis skill docs.
+- Safety boundary: workflow reads local Markdown dumps only; it does not repair code, retry actions, approve/deny host decisions, call an AI provider, or send network traffic.
+- Version: package and plugin manifests updated to `0.2.0` so fresh installs can pick up the new CLI entrypoint.
+- Automated checks: `npm run typecheck` passed; `npm test` passed with 30/30 tests.
+- Smoke checks: `node dist/src/cli/main.js explain examples/sample-report.md` and `node dist/src/cli/main.js handoff examples/sample-report.md` both produced deterministic local output without host-control JSON.
+- Validators: `claude plugin validate ./plugins/claude-code` passed; Codex plugin creator validator passed for `plugins/codex`.
+- Fresh install check: `npm pack` produced `halttrace-0.2.0.tgz`; installing it into an isolated temporary npm project exposed `halttrace help` with the new `latest`, `explain`, and `handoff` commands.
+- Non-author reach-for: still pending post-deployment real-incident evaluation.
+- Verdict: engineering dump workflow pass; adoption verdict pending.

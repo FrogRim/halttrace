@@ -1,6 +1,6 @@
 {
   "name": "halttrace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Observer-only local backtraces for halted Codex sessions.",
   "author": {
     "name": "FrogRim",
@@ -28,7 +28,8 @@
     ],
     "defaultPrompt": [
       "Use HaltTrace to preserve local backtraces for halted Codex sessions.",
-      "Show me the latest HaltTrace dump path for this project."
+      "Show me the latest HaltTrace dump path for this project.",
+      "If a HaltTrace dump exists, run halttrace explain and halttrace handoff before planning recovery."
     ],
     "websiteURL": "https://github.com/FrogRim/halttrace",
     "privacyPolicyURL": "https://github.com/FrogRim/halttrace/blob/main/SECURITY.md"
