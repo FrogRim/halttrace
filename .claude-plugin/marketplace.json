@@ -1,16 +1,16 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "halttrace",
-  "version": "0.1.0",
-  "description": "Local backtrace dumps for halted Claude Code sessions.",
+  "version": "0.2.0",
+  "description": "Local failure automation for halted AI coding-agent sessions.",
   "owner": {
     "name": "HaltTrace"
   },
   "plugins": [
     {
       "name": "halttrace",
-      "description": "Observes Claude Code hook events and writes local backtrace dumps when progress involuntarily halts.",
-      "version": "0.1.0",
+      "description": "Observes Claude Code hook events, writes local dumps, and supports deterministic dump triage and handoff prompts.",
+      "version": "0.2.0",
       "author": {
         "name": "HaltTrace"
       },

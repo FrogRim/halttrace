@@ -51,7 +51,7 @@ Several tempting claims were rejected: HaltTrace is not an MCP server, not a pol
 | --- | --- |
 | `npm run build` | TypeScript compiles and plugin wrapper runtime is synced |
 | `npm run typecheck` | Type contracts are checked without emitting files |
-| `npm test` | Node's built-in test runner validates compiled tests; latest documented run passed 27/27 |
+| `npm test` | Node's built-in test runner validates compiled tests; latest documented run passed 30/30 |
 | `tests/codex-contract.test.ts` | Codex context-only events, ordinary Bash non-triggers, `apply_patch` failure triggers, and MCP/tool exception triggers are pinned |
 | Claude/Codex wrapper paths | Two host adapters use the same core/router/sink contract |
 | Trigger policy table | Expected dump vs non-dump behavior is documented for review |
