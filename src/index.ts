@@ -26,10 +26,12 @@ export {
   findLatestDump,
   parseDumpMarkdown,
   readDumpSummary,
+  renderDoctor,
   renderExplanation,
   renderHandoff,
+  runDumpDoctor,
 } from "./core/dump-workflow.js";
-export type { DumpFile, DumpSearchOptions, DumpSummary, EvidenceBlock } from "./core/dump-workflow.js";
+export type { DoctorCheck, DoctorReport, DoctorStatus, DumpFile, DumpSearchOptions, DumpSummary, EvidenceBlock } from "./core/dump-workflow.js";
 export { claudeHookToAgentEvent, parseClaudeHookInput } from "./adapters/claude-code.js";
 export type { ClaudeHookInput } from "./adapters/claude-code.js";
 export { codexHookToAgentEvent, parseCodexHookInput } from "./adapters/codex.js";

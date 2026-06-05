@@ -41,9 +41,11 @@ Local Markdown dump
   -> dump parser
   -> deterministic explanation
   -> handoff prompt for a resumed or different agent
+  -> doctor report for local hook/storage/evidence health
+  -> packaged skill recovery plan when an agent is asked to resume
 ```
 
-This downstream workflow reads files only. It does not call a provider, mutate host state, or feed decisions back into the hook router.
+This downstream workflow reads files only. It does not call a provider, mutate hook configuration, mutate host state, or feed decisions back into the hook router.
 
 ## Universal MVP Boundary
 
@@ -90,7 +92,11 @@ Owns Markdown incident formatting, local dump writing, and surfacing the dump pa
 
 ### `dump-workflow`
 
-Owns deterministic local dump discovery, Markdown parsing, explanation rendering, and handoff rendering for `halttrace latest`, `halttrace explain`, and `halttrace handoff`.
+Owns deterministic local dump discovery, Markdown parsing, explanation rendering, handoff rendering, and doctor checks for `halttrace latest`, `halttrace explain`, `halttrace handoff`, and `halttrace doctor`.
+
+### `halttrace-dump-analysis` skill
+
+Lives in both plugin wrappers. It tells Claude/Codex agents to create or track one recovery goal, consume the dump workflow commands, and write an evidence-backed recovery plan without implying automatic repair or host-control authority.
 
 ### `replay`
 

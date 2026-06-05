@@ -8,8 +8,10 @@ import {
   findLatestDump,
   parseDumpMarkdown,
   projectHash,
+  renderDoctor,
   renderExplanation,
   renderHandoff,
+  runDumpDoctor,
 } from "../src/index.js";
 
 const sampleDump = `# Agent Event Backtrace
@@ -63,6 +65,10 @@ test("dump workflow parses Markdown reports into deterministic summaries", () =>
   assert.equal(summary.evidenceBlocks[0]?.label, "stderr tail");
   assert.match(renderExplanation(summary), /HaltTrace Explanation/);
   assert.match(renderHandoff(summary), /HaltTrace Handoff Prompt/);
+  const doctor = runDumpDoctor(summary);
+  assert.equal(doctor.status, "warn");
+  assert.match(renderDoctor(doctor), /HaltTrace Doctor/);
+  assert.equal(doctor.checks.find((check) => check.id === "evidence")?.status, "pass");
 });
 
 test("dump workflow finds the latest dump with project and session filters", async () => {
@@ -105,15 +111,40 @@ test("main CLI explains and hands off latest dumps without network or host contr
     assert.equal(latest.code, 0);
     assert.equal(latest.stdout.trim(), dumpPath);
 
+    const latestAlias = await runCliScript("dist/src/cli/latest.js", ["--state-root", root, "--cwd", cwd]);
+    assert.equal(latestAlias.code, 0);
+    assert.equal(latestAlias.stdout.trim(), dumpPath);
+
     const explain = await runMain(["explain", "--state-root", root, "--cwd", cwd]);
     assert.equal(explain.code, 0);
     assert.match(explain.stdout, /Likely Cause/);
     assert.doesNotMatch(explain.stdout, /permissionDecision|continue:false|retry:true/);
 
+    const explainAlias = await runCliScript("dist/src/cli/explain.js", ["--state-root", root, "--cwd", cwd]);
+    assert.equal(explainAlias.code, 0);
+    assert.match(explainAlias.stdout, /Likely Cause/);
+    assert.doesNotMatch(explainAlias.stdout, /permissionDecision|continue:false|retry:true/);
+
     const handoff = await runMain(["handoff", dumpPath]);
     assert.equal(handoff.code, 0);
     assert.match(handoff.stdout, /Continue With This Instruction/);
     assert.doesNotMatch(handoff.stdout, /permissionDecision|continue:false|retry:true/);
+
+    const handoffAlias = await runCliScript("dist/src/cli/handoff.js", [dumpPath]);
+    assert.equal(handoffAlias.code, 0);
+    assert.match(handoffAlias.stdout, /Continue With This Instruction/);
+
+    const doctor = await runMain(["doctor", dumpPath]);
+    assert.equal(doctor.code, 0);
+    assert.match(doctor.stdout, /HaltTrace Doctor/);
+    assert.match(doctor.stdout, /Overall status:/);
+    assert.doesNotMatch(doctor.stdout, /permissionDecision|continue:false|retry:true/);
+
+    const doctorJson = await runMain(["doctor", dumpPath, "--json"]);
+    assert.equal(doctorJson.code, 0);
+    const parsedDoctor: unknown = JSON.parse(doctorJson.stdout);
+    assert.equal(readStringField(parsedDoctor, "status"), "warn");
+    assert.equal(readCheckStatus(parsedDoctor, "evidence"), "pass");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -126,8 +157,12 @@ interface CliResult {
 }
 
 function runMain(args: string[]): Promise<CliResult> {
+  return runCliScript("dist/src/cli/main.js", args);
+}
+
+function runCliScript(script: string, args: string[]): Promise<CliResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["dist/src/cli/main.js", ...args], {
+    const child = spawn(process.execPath, [script, ...args], {
       cwd: process.cwd(),
       env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
@@ -147,4 +182,35 @@ function runMain(args: string[]): Promise<CliResult> {
       resolve({ code, stdout, stderr });
     });
   });
+}
+
+function readStringField(value: unknown, key: string): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const field = value[key];
+  return typeof field === "string" ? field : undefined;
+}
+
+function readCheckStatus(value: unknown, id: string): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const checks = value["checks"];
+  if (!Array.isArray(checks)) {
+    return undefined;
+  }
+  for (const check of checks) {
+    if (!isRecord(check)) {
+      continue;
+    }
+    if (check["id"] === id && typeof check["status"] === "string") {
+      return check["status"];
+    }
+  }
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

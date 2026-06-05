@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { env, cwd as processCwd } from "node:process";
-import { findLatestDump, readDumpSummary, renderExplanation, renderHandoff } from "../core/dump-workflow.js";
+import { findLatestDump, readDumpSummary, renderDoctor, renderExplanation, renderHandoff, runDumpDoctor } from "../core/dump-workflow.js";
 
 interface CliOptions {
   stateRoot?: string;
@@ -27,6 +27,9 @@ async function main(): Promise<void> {
       return;
     case "handoff":
       await handoff(parsed.positional[0], parsed.options);
+      return;
+    case "doctor":
+      await doctor(parsed.positional[0], parsed.options);
       return;
     case "help":
     case "--help":
@@ -67,6 +70,16 @@ async function handoff(dumpPath: string | undefined, options: CliOptions): Promi
     return;
   }
   console.log(renderHandoff(summary));
+}
+
+async function doctor(dumpPath: string | undefined, options: CliOptions): Promise<void> {
+  const summary = await summaryFor(dumpPath, options);
+  const report = runDumpDoctor(summary);
+  if (options.json) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  console.log(renderDoctor(report));
 }
 
 async function summaryFor(dumpPath: string | undefined, options: CliOptions) {
@@ -146,11 +159,19 @@ Usage:
   halttrace latest [--state-root <dir>] [--cwd <path>] [--project-hash <hash>] [--session <id>] [--json]
   halttrace explain [dump.md] [--state-root <dir>] [--cwd <path>] [--project-hash <hash>] [--session <id>] [--json]
   halttrace handoff [dump.md] [--state-root <dir>] [--cwd <path>] [--project-hash <hash>] [--session <id>] [--json]
+  halttrace doctor [dump.md] [--state-root <dir>] [--cwd <path>] [--project-hash <hash>] [--session <id>] [--json]
+
+Short bin aliases:
+  halttrace-latest [options]
+  halttrace-explain [dump.md] [options]
+  halttrace-handoff [dump.md] [options]
+  halttrace-doctor [dump.md] [options]
 
 Commands:
   latest   Print the latest local HaltTrace dump path.
   explain  Summarize a dump into deterministic local triage.
   handoff  Generate a prompt for another agent to continue from the dump.
+  doctor   Inspect the latest dump for local hook/storage/evidence health.
 
 These commands only read local dump files. They do not repair code, control hosts, or send network traffic.`);
 }

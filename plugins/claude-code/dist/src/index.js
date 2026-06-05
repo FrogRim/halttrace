@@ -7,7 +7,7 @@ export { assertStateRootSafeForProject, defaultStateRoot, projectHash, resolveSt
 export { sanitizeEventForStorage } from "./core/privacy.js";
 export { redactAndTruncate, redactText, truncateTail } from "./core/redaction.js";
 export { BacktraceSink, renderIncidentMarkdown } from "./sinks/backtrace.js";
-export { findLatestDump, parseDumpMarkdown, readDumpSummary, renderExplanation, renderHandoff, } from "./core/dump-workflow.js";
+export { findLatestDump, parseDumpMarkdown, readDumpSummary, renderDoctor, renderExplanation, renderHandoff, runDumpDoctor, } from "./core/dump-workflow.js";
 export { claudeHookToAgentEvent, parseClaudeHookInput } from "./adapters/claude-code.js";
 export { codexHookToAgentEvent, parseCodexHookInput } from "./adapters/codex.js";
 export { replayJsonlFile, replayJsonlText } from "./replay/jsonl.js";

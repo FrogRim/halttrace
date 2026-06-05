@@ -40,6 +40,22 @@ export interface EvidenceBlock {
   preview: string;
 }
 
+export type DoctorStatus = "pass" | "warn" | "fail";
+
+export interface DoctorCheck {
+  id: string;
+  status: DoctorStatus;
+  message: string;
+  detail?: string;
+}
+
+export interface DoctorReport {
+  status: DoctorStatus;
+  dump: DumpSummary;
+  checks: DoctorCheck[];
+  recommendedNextSteps: string[];
+}
+
 interface ParsedOptions {
   stateRoot: string;
   projectHash?: string;
@@ -165,6 +181,56 @@ export function renderHandoff(summary: DumpSummary): string {
   summary.recommendedNextSteps.forEach((step, index) => {
     lines.push(`${index + 1}. ${step}`);
   });
+  lines.push("");
+  return lines.join("\n");
+}
+
+export function runDumpDoctor(summary: DumpSummary): DoctorReport {
+  const checks: DoctorCheck[] = [
+    dumpPathCheck(summary),
+    hostCheck(summary),
+    triggerCheck(summary),
+    evidenceCheck(summary),
+    dumpModeCheck(summary),
+    storageLocationCheck(summary),
+    projectHashCheck(summary),
+    codexCoverageCheck(summary),
+  ].filter((check): check is DoctorCheck => check !== undefined);
+  return {
+    status: overallStatus(checks),
+    dump: summary,
+    checks,
+    recommendedNextSteps: doctorNextSteps(summary, checks),
+  };
+}
+
+export function renderDoctor(report: DoctorReport): string {
+  const lines: string[] = [];
+  lines.push("# HaltTrace Doctor");
+  lines.push("");
+  lines.push(`Overall status: ${report.status.toUpperCase()}`);
+  appendField(lines, "Dump", report.dump.path);
+  appendField(lines, "Host", report.dump.host);
+  appendField(lines, "Trigger", report.dump.trigger);
+  appendField(lines, "Session", report.dump.sessionId);
+  appendField(lines, "CWD", report.dump.cwd);
+  lines.push("");
+  lines.push("## Checks");
+  lines.push("");
+  for (const check of report.checks) {
+    lines.push(`- [${check.status.toUpperCase()}] ${check.message}`);
+    if (check.detail !== undefined && check.detail.length > 0) {
+      lines.push(`  ${check.detail}`);
+    }
+  }
+  lines.push("");
+  lines.push("## Recommended Next Steps");
+  lines.push("");
+  report.recommendedNextSteps.forEach((step, index) => {
+    lines.push(`${index + 1}. ${step}`);
+  });
+  lines.push("");
+  lines.push("Doctor only inspects local dump evidence. It does not mutate hook configuration, repair code, or send network traffic.");
   lines.push("");
   return lines.join("\n");
 }
@@ -341,6 +407,144 @@ function recommendedNextSteps(trigger: string | undefined, eventType: string | u
     "Identify the smallest missing piece of evidence, then gather that evidence locally.",
     "Write a short recovery plan before editing or rerunning broad commands.",
   ];
+}
+
+function dumpPathCheck(summary: DumpSummary): DoctorCheck {
+  return summary.path === undefined
+    ? { id: "dump-path", status: "warn", message: "No dump path was provided in the parsed summary." }
+    : { id: "dump-path", status: "pass", message: "Dump path is available.", detail: summary.path };
+}
+
+function hostCheck(summary: DumpSummary): DoctorCheck {
+  if (summary.host === undefined) {
+    return { id: "host", status: "warn", message: "Dump does not identify a host adapter." };
+  }
+  if (summary.host === "claude-code" || summary.host === "codex") {
+    return { id: "host", status: "pass", message: `Host adapter is recognized: ${summary.host}.` };
+  }
+  return { id: "host", status: "warn", message: `Host adapter is not recognized by doctor: ${summary.host}.` };
+}
+
+function triggerCheck(summary: DumpSummary): DoctorCheck {
+  if (summary.trigger === undefined) {
+    return { id: "trigger", status: "warn", message: "Dump does not include a trigger field." };
+  }
+  return { id: "trigger", status: "pass", message: `Trigger is present: ${summary.trigger}.` };
+}
+
+function evidenceCheck(summary: DumpSummary): DoctorCheck {
+  if (summary.evidenceBlocks.length > 0) {
+    return {
+      id: "evidence",
+      status: "pass",
+      message: `Dump includes ${summary.evidenceBlocks.length} evidence block(s).`,
+    };
+  }
+  if (summary.recentEventCount > 0) {
+    return {
+      id: "evidence",
+      status: "warn",
+      message: "Dump has recent event context but no fenced evidence blocks.",
+      detail: "Hook wiring likely captured metadata, but stderr/stdout/error payloads may be unavailable or omitted.",
+    };
+  }
+  return {
+    id: "evidence",
+    status: "warn",
+    message: "Dump does not include recent events or evidence blocks.",
+    detail: "Verify hook activation and dump mode before relying on this report.",
+  };
+}
+
+function dumpModeCheck(summary: DumpSummary): DoctorCheck {
+  if (summary.dumpMode === "metadata-only") {
+    return {
+      id: "dump-mode",
+      status: "warn",
+      message: "Dump mode is metadata-only.",
+      detail: "This is safer for sensitive contexts but limits root-cause evidence.",
+    };
+  }
+  if (summary.dumpMode === "rich-local") {
+    return { id: "dump-mode", status: "pass", message: "Dump mode is rich-local." };
+  }
+  return { id: "dump-mode", status: "warn", message: "Dump mode is missing or unrecognized." };
+}
+
+function storageLocationCheck(summary: DumpSummary): DoctorCheck {
+  if (summary.path === undefined) {
+    return { id: "storage-location", status: "warn", message: "Cannot verify storage location without a dump path." };
+  }
+  if (summary.cwd === undefined) {
+    return {
+      id: "storage-location",
+      status: "warn",
+      message: "Cannot compare dump storage against project root because CWD is missing.",
+    };
+  }
+  return isInsideOrSame(summary.cwd, summary.path)
+    ? {
+        id: "storage-location",
+        status: "fail",
+        message: "Dump appears to be stored inside the project checkout.",
+        detail: "HaltTrace's default safety model keeps state outside the repository.",
+      }
+    : { id: "storage-location", status: "pass", message: "Dump path is outside the recorded project CWD." };
+}
+
+function projectHashCheck(summary: DumpSummary): DoctorCheck | undefined {
+  if (summary.path === undefined || summary.projectHash === undefined) {
+    return undefined;
+  }
+  return summary.path.split(path.sep).includes(summary.projectHash)
+    ? { id: "project-hash", status: "pass", message: "Dump path includes the recorded project hash." }
+    : {
+        id: "project-hash",
+        status: "warn",
+        message: "Dump path does not include the recorded project hash.",
+        detail: "This can happen with sample reports, copied dumps, or custom storage layouts.",
+      };
+}
+
+function codexCoverageCheck(summary: DumpSummary): DoctorCheck | undefined {
+  if (summary.host !== "codex") {
+    return undefined;
+  }
+  return {
+    id: "codex-coverage",
+    status: "warn",
+    message: "Codex hook coverage is experimental and build-sensitive.",
+    detail: "If only lifecycle, permission, stop, or ordinary Bash events are captured, HaltTrace may record context without producing dumps.",
+  };
+}
+
+function doctorNextSteps(summary: DumpSummary, checks: DoctorCheck[]): string[] {
+  const steps = [...summary.recommendedNextSteps];
+  if (checks.some((check) => check.id === "storage-location" && check.status === "fail")) {
+    steps.unshift("Move HaltTrace state outside the project checkout and rerun the failing scenario.");
+  }
+  if (checks.some((check) => check.id === "dump-mode" && check.status === "warn")) {
+    steps.push("Use rich-local mode for local debugging when sensitive-content risk is acceptable.");
+  }
+  if (checks.some((check) => check.id === "codex-coverage")) {
+    steps.push("Verify the active Codex build emits the hook event type needed for this trigger.");
+  }
+  return [...new Set(steps)];
+}
+
+function overallStatus(checks: DoctorCheck[]): DoctorStatus {
+  if (checks.some((check) => check.status === "fail")) {
+    return "fail";
+  }
+  if (checks.some((check) => check.status === "warn")) {
+    return "warn";
+  }
+  return "pass";
+}
+
+function isInsideOrSame(root: string, target: string): boolean {
+  const relative = path.relative(path.resolve(root), path.resolve(target));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function appendField(lines: string[], label: string, value: string | undefined): void {

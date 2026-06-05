@@ -37,7 +37,7 @@ flowchart LR
 | Host adapters share one core contract | separate Claude/Codex implementations | Proves the router/sink contract across structurally different hook surfaces | Adapter-specific edge cases still need hardening |
 | Markdown incident dumps | raw JSON-only logs | Humans can review the halt context quickly during debugging | Requires careful redaction/truncation policy |
 | Explicit trigger policy | dump on every command/test failure | Ordinary failures are part of development; dumps should be reserved for unexpected halt conditions | Some noisy-but-useful events remain context only |
-| Deterministic dump workflow | required LLM/provider integration | `latest`, `explain`, and `handoff` work locally with no network or API key | Triage is useful but intentionally not a full AI repair agent |
+| Deterministic dump workflow | required LLM/provider integration | `latest`, `explain`, `handoff`, and `doctor` work locally with no network or API key | Triage is useful but intentionally not a full AI repair agent |
 
 ## AI-Assisted Engineering Record
 
@@ -51,12 +51,13 @@ Several tempting claims were rejected: HaltTrace is not an MCP server, not a pol
 | --- | --- |
 | `npm run build` | TypeScript compiles and plugin wrapper runtime is synced |
 | `npm run typecheck` | Type contracts are checked without emitting files |
-| `npm test` | Node's built-in test runner validates compiled tests; latest documented run passed 30/30 |
+| `npm test` | Node's built-in test runner validates compiled tests; latest documented run passed 31/31 |
 | `tests/codex-contract.test.ts` | Codex context-only events, ordinary Bash non-triggers, `apply_patch` failure triggers, and MCP/tool exception triggers are pinned |
 | Claude/Codex wrapper paths | Two host adapters use the same core/router/sink contract |
 | Trigger policy table | Expected dump vs non-dump behavior is documented for review |
 | Privacy/storage section | Local state, bounded retention, and sharing caveats are explicit |
-| `halttrace latest/explain/handoff` | Captured dumps can be consumed as local failure automation |
+| `halttrace latest/explain/handoff/doctor` | Captured dumps can be consumed as local failure automation |
+| `halttrace-dump-analysis` skill | Claude/Codex agents can turn a dump into a goal-mode recovery plan |
 
 ## Known Limits
 
@@ -73,8 +74,8 @@ HaltTrace is currently:
 - a stable Claude Code hook/plugin wrapper under `plugins/claude-code`
 - an experimental Codex hook/plugin wrapper under `plugins/codex`
 - an spdlog-inspired local event router, bounded event store, trigger classifier, and Markdown backtrace sink
-- a deterministic dump-reading CLI workflow: `latest`, `explain`, and `handoff`
-- an agent-facing `halttrace-dump-analysis` skill packaged with the plugin wrappers
+- a deterministic dump-reading CLI workflow: `latest`, `explain`, `handoff`, and `doctor`
+- an agent-facing `halttrace-dump-analysis` skill packaged with the plugin wrappers for goal-mode recovery plans
 - a Universal MVP in the narrow contract sense: two structurally different host adapters now use the same core/router/sink contract
 
 HaltTrace is not currently:
@@ -119,15 +120,38 @@ The observer plugin creates dumps. The CLI workflow consumes those dumps:
 halttrace latest
 halttrace explain
 halttrace handoff
+halttrace doctor
 ```
+
+`[dump.md]` is optional for dump-consuming commands. When omitted, HaltTrace reads the latest dump for the selected state root/project/session.
 
 - `halttrace latest` prints the newest local dump path.
 - `halttrace explain [dump.md]` prints deterministic local triage: trigger, host, session, files, likely cause, evidence previews, and next checks.
 - `halttrace handoff [dump.md]` prints a prompt another agent can use to continue from the dump.
+- `halttrace doctor [dump.md]` inspects the latest dump for local hook, storage, dump-mode, and evidence health.
+
+Short npm bin aliases are also available:
+
+```sh
+halttrace-latest
+halttrace-explain
+halttrace-handoff
+halttrace-doctor
+```
+
+On PowerShell, import the bundled alias module to get C++-style names for the current session:
+
+```powershell
+Import-Module ./scripts/halttrace-powershell-aliases.psm1
+halttrace:explain
+halttrace:doctor
+```
 
 Use `--state-root <dir>` when reading from a custom state root, `--cwd <path>` to filter to a project hash, `--session <id>` to filter to one session, and `--json` for machine-readable output.
 
-These commands only read local dump files. They do not repair code, approve permissions, retry failed actions, call an AI provider, or send network traffic.
+These commands only read local dump files. They do not repair code, approve permissions, retry failed actions, mutate hook configuration, call an AI provider, or send network traffic.
+
+The Claude and Codex plugin wrappers also package a `halttrace-dump-analysis` skill. When a dump exists, the skill creates or tracks one recovery goal, runs `latest`/`explain`/`doctor`/`handoff` as needed, and writes a recovery plan with evidence, next steps, verification commands, risks, and unknowns.
 
 ## Install With Claude Code Plugin Manager
 

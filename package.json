@@ -6,6 +6,10 @@
   "license": "MIT",
   "bin": {
     "halttrace": "./dist/src/cli/main.js",
+    "halttrace-latest": "./dist/src/cli/latest.js",
+    "halttrace-explain": "./dist/src/cli/explain.js",
+    "halttrace-handoff": "./dist/src/cli/handoff.js",
+    "halttrace-doctor": "./dist/src/cli/doctor.js",
     "halttrace-claude": "./dist/src/cli/claude-hook.js",
     "halttrace-codex": "./dist/src/cli/codex-hook.js"
   },
@@ -14,6 +18,7 @@
     "plugins/",
     "docs/",
     "examples/",
+    "scripts/halttrace-powershell-aliases.psm1",
     "README.md",
     "SECURITY.md",
     "LICENSE"
