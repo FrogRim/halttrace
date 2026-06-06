@@ -80,3 +80,11 @@ The adoption verdict remains separate. Do not treat install count, passive reten
 - Fresh install check: `npm pack` produced `halttrace-0.2.0.tgz`; installing it into an isolated temporary npm project exposed `halttrace help` with the new `latest`, `explain`, and `handoff` commands.
 - Non-author reach-for: still pending post-deployment real-incident evaluation.
 - Verdict: engineering dump workflow pass; adoption verdict pending.
+
+### 2026-06-06 - Dump Analysis Skill Sync Follow-up
+
+- Trigger: kept Claude Code and Codex `halttrace-dump-analysis` skills aligned with the new dump workflow and goal-mode recovery handoff.
+- Scope: verified the user-facing `halttrace latest`, `halttrace explain`, `halttrace handoff`, and `halttrace doctor` CLI surface plus the packaged agent skill docs.
+- Safety boundary: still observer-only; no automatic repair, automatic retry, host approval/denial decision, network upload, or AI provider dependency was added.
+- Automated checks: `npm run typecheck` passed; `npm test` passed with 31/31 tests.
+- Verdict: release proof now covers the local dump workflow and the agent-facing skill packaging.
